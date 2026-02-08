@@ -148,24 +148,6 @@ export function ChatModeSelector() {
             </SelectItem>
           </>
         )}
-        {!isProEnabled && (
-          <SelectItem value="local-agent" disabled={isQuotaExceeded}>
-            <div className="flex flex-col items-start">
-              <div className="flex items-center gap-1.5">
-                <span className="font-medium">Basic Agent</span>
-                <span className="text-xs text-muted-foreground">
-                  ({isQuotaExceeded ? "0" : messagesRemaining}/5 remaining for
-                  today)
-                </span>
-              </div>
-              <span className="text-xs text-muted-foreground">
-                {isQuotaExceeded
-                  ? "Daily limit reached"
-                  : "Try our AI agent for free"}
-              </span>
-            </div>
-          </SelectItem>
-        )}
         <SelectItem value="build">
           <div className="flex flex-col items-start">
             <span className="font-medium">Build</span>
