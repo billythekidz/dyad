@@ -1,154 +1,112 @@
-# 🚀 Quick Reference - Dyad Custom Version
+# 🚀 DYAD BUILD MODE - QUICK REFERENCE
 
-## ✅ Setup Complete!
+## 📋 All 7 Free Tools:
 
-Your Dyad fork with bash tool is ready:
-- ✅ Custom branch: `custom-bash-tool`
-- ✅ Tagged version: `custom-bash-v1.0`
-- ✅ Upstream remote: `https://github.com/dyad-sh/dyad.git`
-- ✅ Backup patch: `dyad-bash-tool.patch`
+### 1. **bash** - Shell Commands
+```
+"Check git status"
+"Install lodash package"
+"Run npm test"
+```
 
----
+### 2. **read_file** - Read Files
+```
+"Read package.json"
+"Show me src/App.tsx"
+```
 
-## 📋 Daily Usage
+### 3. **list_files** - List Files
+```
+"List all files in src/"
+"Show me all TypeScript files"
+```
 
-### Start working:
-```bash
-cd /d/GITHUB/dyad
-git checkout custom-bash-tool  # Make sure you're on custom branch
-npm run build && npm start
+### 4. **grep** - Search Files
+```
+"Search for 'useState' in all .tsx files"
+"Find all React imports"
+```
+
+### 5. **run_type_checks** - TypeScript
+```
+"Run type checks"
+"Check for TypeScript errors"
+```
+
+### 6. **web_search** - Web Search (NEW!)
+```
+"Search the web for Next.js documentation"
+"Find React best practices 2026"
+"Search for Tailwind CSS v4 tutorial"
+```
+
+### 7. **sqlite_query** - Database (NEW!)
+```
+"Create a database at ./data.db with users table"
+"Add a user named John to data.db"
+"Show all users from data.db"
 ```
 
 ---
 
-## 🔄 Update Dyad (Keep your changes)
+## 🎯 Common Workflows:
 
-### Automatic (Recommended):
-```bash
-cd /d/GITHUB/dyad
-./update-dyad.sh
-```
+### **Research + Build:**
+1. `"Search the web for Next.js dynamic routes"`
+2. `"Read my app/page.tsx"`
+3. `"Create dynamic routes based on the docs"`
 
-### Manual:
-```bash
-# 1. Fetch latest
-git fetch upstream
+### **Database Setup:**
+1. `"Create products.db with products table (id, name, price)"`
+2. `"Add product: iPhone 15, price 999"`
+3. `"Show all products"`
 
-# 2. Check what's new
-git log custom-bash-tool..upstream/main --oneline
+### **Code Quality:**
+1. `"Run type checks"`
+2. `"Search for 'any' type in .ts files"`
+3. `"Read files with type errors"`
 
-# 3. Update main
-git checkout main
-git merge upstream/main
-
-# 4. Rebase your changes
-git checkout custom-bash-tool
-git rebase main
-
-# 5. Rebuild
-npm install
-npm run build
-```
+### **Git Workflow:**
+1. `"Check git status"`
+2. `"Show git diff"`
+3. `"Commit changes with message: fix type errors"`
 
 ---
 
-## 🆘 If Update Breaks
-
-### Rollback to working version:
-```bash
-git checkout custom-bash-tool
-git reset --hard custom-bash-v1.0
-npm install && npm run build
+## 🔑 Brave Search API Key:
 ```
-
-### Restore from patch (nuclear option):
-```bash
-# Fresh clone
-git clone https://github.com/dyad-sh/dyad.git dyad-fresh
-cd dyad-fresh
-
-# Apply your changes
-git apply ../dyad/dyad-bash-tool.patch
-
-# Build
-npm install && npm run build
+BSAk6ycQkrPTCb9RkvDP-9fEQVwADNt
 ```
+(Already configured in the tool)
 
 ---
 
-## 🔍 Useful Commands
+## 📦 SQLite Setup:
 
-### Check current version:
+**Install if needed:**
 ```bash
-git describe --tags
-# Output: custom-bash-v1.0
+npm install better-sqlite3
 ```
 
-### See your custom changes:
-```bash
-git diff main..custom-bash-tool
-```
-
-### List all versions:
-```bash
-git tag -l "custom-bash-v*"
-```
-
-### Check for updates:
-```bash
-git fetch upstream
-git log custom-bash-tool..upstream/main --oneline
-# If empty: No updates available
-# If shows commits: Updates available
-```
+**Database file path:**
+- Relative to project root: `./data.db`
+- Nested: `./db/app.sqlite`
+- Will be created automatically if doesn't exist
 
 ---
 
-## 🎯 Branch Diagram
+## ✅ Version Info:
 
-```
-upstream/main (Original Dyad)
-    |
-    v
-main (Your synced copy)
-    |
-    | (rebase)
-    v
-custom-bash-tool (Your working branch)
-    - bash.ts
-    - tool_definitions.ts
-    - local_agent_prompt.ts
-```
+- **Version:** custom-bash-v1.3
+- **Date:** 2026-02-08
+- **Branch:** custom-bash-tool
+- **Tools:** 7 (all FREE!)
 
 ---
 
-## ⚠️ Rules
-
-1. **NEVER commit directly to `main`** - it should mirror upstream
-2. **ALWAYS work on `custom-bash-tool`** - your changes live here
-3. **TAG every stable version** - easy rollback if needed
-4. **TEST after every update** - before tagging new version
-
----
-
-## 📦 Files Changed (Your custom changes)
-
+## 🚀 Launch:
 ```
-✅ New:
-  - src/pro/main/ipc/handlers/local_agent/tools/bash.ts
-
-✅ Modified:
-  - src/pro/main/ipc/handlers/local_agent/tool_definitions.ts
-  - src/prompts/local_agent_prompt.ts
-
-✅ Docs:
-  - BASH_TOOL_FIX.md
-  - MAINTENANCE_STRATEGY.md
-  - update-dyad.sh
+D:\GITHUB\dyad\out\dyad-win32-x64\dyad.exe
 ```
 
----
-
-## 🎉 You're Protected!
-
-Your changes are now safe and will survive Dyad updates! 🚀
+**Select "Build" mode and start using all 7 tools!** 🎉
