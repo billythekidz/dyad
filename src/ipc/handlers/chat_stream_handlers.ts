@@ -48,6 +48,15 @@ import {
   getSupabaseContext,
   getSupabaseClientCode,
 } from "../../supabase_admin/supabase_context";
+import {
+  shouldAutoSaveConversation,
+  TOKEN_LIMITS,
+} from "../../lib/token_counter";
+import {
+  saveConversationToMemory,
+  loadProjectContext,
+} from "../../lib/auto_save_conversation";
+import { extractProjectScope } from "../../lib/token_counter";
 import { SUMMARIZE_CHAT_SYSTEM_PROMPT } from "../../prompts/summarize_chat_system_prompt";
 import { SECURITY_REVIEW_SYSTEM_PROMPT } from "../../prompts/security_review_prompt";
 import fs from "node:fs";
@@ -1249,10 +1258,66 @@ This conversation includes one or more image attachments. When the user uploads 
         // Get MCP tools for Build mode (includes neural_memory, bash, etc.)
         const buildModeTools = await getMcpTools(event);
 
+        // Check if using COMPACT or FULL system prompt
+        const USE_COMPACT = process.env.USE_COMPACT_PROMPT === 'true';
+
+        // 🔥 AUTO-SAVE TO NEURAL MEMORY WHEN APPROACHING TOKEN LIMIT 🔥
+        // Check if conversation is getting too long (90% of 200k limit)
+        const systemPromptSize = USE_COMPACT
+          ? TOKEN_LIMITS.SYSTEM_PROMPT_COMPACT
+          : TOKEN_LIMITS.SYSTEM_PROMPT_FULL;
+
+        const autoSaveCheck = shouldAutoSaveConversation(chatMessages, systemPromptSize);
+
+        if (autoSaveCheck.shouldSave && !req.skipAutoSave) {
+          const percentage = autoSaveCheck.percentage.toFixed(1);
+          logger.warn(
+            `[AutoSave] ⚠️ Conversation at ${percentage}% of token limit (${autoSaveCheck.currentTokens}/${TOKEN_LIMITS.MAX_TOKENS})`
+          );
+
+          // Get project scope
+          const projectScope = await extractProjectScope(dyadAppPath);
+
+          // Notify user
+          processResponseChunkUpdate({
+            type: "message",
+            delta: `\n\n🔔 **Auto-Save Triggered**\n\nConversation is at **${percentage}%** of token limit (${autoSaveCheck.currentTokens.toLocaleString()}/${TOKEN_LIMITS.MAX_TOKENS.toLocaleString()} tokens).\n\nSaving conversation to neural memory...\n`,
+          });
+
+          // Save conversation to neural memory
+          const saved = await saveConversationToMemory(
+            chatMessages,
+            projectScope,
+            dyadAppPath
+          );
+
+          if (saved) {
+            processResponseChunkUpdate({
+              type: "message",
+              delta: `✅ **Conversation saved to neural memory!**\n\nProject scope: \`${projectScope}\`\n\n📝 You can continue in a new conversation, and context will be automatically loaded from neural memory.\n\n`,
+            });
+
+            logger.info('[AutoSave] ✅ Conversation saved successfully');
+
+            // If CRITICAL threshold, suggest new conversation
+            if (autoSaveCheck.isCritical) {
+              processResponseChunkUpdate({
+                type: "message",
+                delta: `🚨 **Critical threshold reached (95%)**\n\nPlease start a new conversation to avoid hitting the token limit. Context will be automatically loaded from neural memory.\n\n`,
+              });
+            }
+          } else {
+            processResponseChunkUpdate({
+              type: "message",
+              delta: `⚠️ **Failed to save conversation to neural memory.**\n\nYou may want to manually save important context before starting a new conversation.\n\n`,
+            });
+            logger.error('[AutoSave] ❌ Failed to save conversation');
+          }
+        }
+
         // Force memory loading at session start
         // If this is the first or second user message, inject memory reminder
         // Disable auto-enforcement if using COMPACT prompt (already concise)
-        const USE_COMPACT = process.env.USE_COMPACT_PROMPT === 'true';
         const userMessageCount = chatMessages.filter(m => m.role === "user").length;
         const shouldForceMemory = !USE_COMPACT && userMessageCount <= 2;
 
