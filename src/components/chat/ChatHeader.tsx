@@ -4,6 +4,7 @@ import {
   PlusCircle,
   GitBranch,
   Info,
+  Brain,
 } from "lucide-react";
 import { PanelRightClose } from "lucide-react";
 import { useAtom, useAtomValue } from "jotai";
@@ -29,6 +30,7 @@ import { useRenameBranch } from "@/hooks/useRenameBranch";
 import { isAnyCheckoutVersionInProgressAtom } from "@/store/appAtoms";
 import { LoadingBar } from "../ui/LoadingBar";
 import { UncommittedFilesBanner } from "./UncommittedFilesBanner";
+import { useState } from "react";
 
 interface ChatHeaderProps {
   isVersionPaneOpen: boolean;
@@ -61,6 +63,8 @@ export function ChatHeader({
 
   const { checkoutVersion, isCheckingOutVersion } = useCheckoutVersion();
   const { renameBranch, isRenamingBranch } = useRenameBranch();
+
+  const [isSavingToMemory, setIsSavingToMemory] = useState(false);
 
   useEffect(() => {
     if (appId) {
@@ -96,6 +100,36 @@ export function ChatHeader({
       }
     } else {
       navigate({ to: "/" });
+    }
+  };
+
+  const handleSaveToMemory = async () => {
+    if (!selectedChatId) {
+      showError("No chat selected");
+      return;
+    }
+
+    setIsSavingToMemory(true);
+
+    try {
+      const result = await ipc.chat.saveConversationToMemory({
+        chatId: selectedChatId,
+      });
+
+      if (result.success) {
+        showSuccess(
+          `💾 Saved to neural memory!\n\n` +
+          `Project: ${result.projectScope}\n` +
+          `Messages: ${result.messageCount}\n` +
+          `Decisions: ${result.decisionsCount} | Errors: ${result.errorsCount} | Features: ${result.featuresCount}`
+        );
+      } else {
+        showError("Failed to save conversation to memory");
+      }
+    } catch (error) {
+      showError(`Failed to save: ${(error as any).toString()}`);
+    } finally {
+      setIsSavingToMemory(false);
     }
   };
 
@@ -196,6 +230,31 @@ export function ChatHeader({
             <PlusCircle size={16} />
             <span>New Chat</span>
           </Button>
+
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  onClick={handleSaveToMemory}
+                  variant="ghost"
+                  disabled={isSavingToMemory || !selectedChatId}
+                  className="hidden @4xs:flex items-center justify-start gap-2 py-3"
+                >
+                  <Brain size={16} className={isSavingToMemory ? "animate-pulse" : ""} />
+                  <span className="hidden @xs:inline">
+                    {isSavingToMemory ? "Saving..." : "Save to Memory"}
+                  </span>
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Save conversation to neural memory</p>
+                <p className="text-xs text-muted-foreground">
+                  Stores decisions, errors, and features for this project
+                </p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+
           <Button
             onClick={onVersionClick}
             variant="ghost"

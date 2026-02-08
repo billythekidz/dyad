@@ -238,6 +238,21 @@ export const chatContracts = {
     input: z.number(), // chatId
     output: z.boolean(),
   }),
+
+  saveConversationToMemory: defineContract({
+    channel: "chat:save-to-memory",
+    input: z.object({
+      chatId: z.number(),
+    }),
+    output: z.object({
+      success: z.boolean(),
+      projectScope: z.string(),
+      messageCount: z.number(),
+      decisionsCount: z.number(),
+      errorsCount: z.number(),
+      featuresCount: z.number(),
+    }),
+  }),
 } as const;
 
 // =============================================================================

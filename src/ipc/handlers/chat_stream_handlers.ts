@@ -55,6 +55,7 @@ import {
 import {
   saveConversationToMemory,
   loadProjectContext,
+  summarizeConversation,
 } from "../../lib/auto_save_conversation";
 import { extractProjectScope } from "../../lib/token_counter";
 import { SUMMARIZE_CHAT_SYSTEM_PROMPT } from "../../prompts/summarize_chat_system_prompt";
@@ -2440,3 +2441,81 @@ Returns: Command output (memories, stats, etc.)`,
   }
   return mcpToolSet;
 }
+
+/**
+ * Manual save conversation to neural memory
+ * User can trigger this from UI button at any time
+ */
+export const saveConversationToMemoryHandler = createTypedHandler(
+  chatContracts.saveConversationToMemory,
+  async ({ chatId }) => {
+    try {
+      logger.info(`[ManualSave] User triggered save for chat ${chatId}`);
+
+      // Get chat messages
+      const chatMessages = await db.query.messages.findMany({
+        where: eq(messages.chatId, chatId),
+        orderBy: (messages, { asc }) => [asc(messages.createdAt)],
+      });
+
+      if (chatMessages.length === 0) {
+        logger.warn('[ManualSave] No messages to save');
+        return {
+          success: false,
+          projectScope: 'unknown',
+          messageCount: 0,
+          decisionsCount: 0,
+          errorsCount: 0,
+          featuresCount: 0,
+        };
+      }
+
+      // Get app path for project scope
+      const chat = await db.query.chats.findFirst({
+        where: eq(chats.id, chatId),
+      });
+
+      if (!chat) {
+        throw new Error(`Chat ${chatId} not found`);
+      }
+
+      const dyadAppPath = await getDyadAppPath(chat.appId);
+      const projectScope = await extractProjectScope(dyadAppPath);
+
+      // Convert to ModelMessage format
+      const modelMessages = chatMessages.map((msg) => ({
+        role: msg.role as 'user' | 'assistant' | 'system',
+        content: msg.content,
+      }));
+
+      // Save to neural memory
+      const success = await saveConversationToMemory(
+        modelMessages,
+        projectScope,
+        dyadAppPath
+      );
+
+      // Get summary stats
+      const summary = summarizeConversation(modelMessages);
+
+      logger.info(
+        `[ManualSave] ${success ? '✅ Success' : '❌ Failed'} - ${summary.messageCount} messages, ${summary.keyDecisions.length} decisions, ${summary.errors.length} errors`
+      );
+
+      return {
+        success,
+        projectScope,
+        messageCount: summary.messageCount,
+        decisionsCount: summary.keyDecisions.length,
+        errorsCount: summary.errors.length,
+        featuresCount: summary.features.length,
+      };
+    } catch (error) {
+      logger.error('[ManualSave] Error:', error);
+      throw error;
+    }
+  }
+);
+
+// Register handler
+ipcMain.handle('chat:save-to-memory', saveConversationToMemoryHandler);
