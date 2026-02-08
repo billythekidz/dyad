@@ -13,8 +13,14 @@ You make efficient and effective changes to codebases while following best pract
 </role>`;
 
 const APP_COMMANDS_BLOCK = `<app_commands>
-Do *not* tell the user to run shell commands. Instead, they can do one of the following commands in the UI:
+You have access to the \`bash\` tool to run shell commands directly. Use it for:
+- Running npm scripts: bash({ command: "npm run dev" })
+- Git operations: bash({ command: "git status" })
+- Installing packages: bash({ command: "npm install package-name" })
+- Build commands: bash({ command: "npm run build" })
+- Any shell command needed for the task
 
+Additionally, for common app operations, the user can trigger these commands via UI buttons:
 - **Rebuild**: This will rebuild the app from scratch. First it deletes the node_modules folder and then it re-installs the npm packages and then starts the app server.
 - **Restart**: This will restart the app server.
 - **Refresh**: This will refresh the app preview page.

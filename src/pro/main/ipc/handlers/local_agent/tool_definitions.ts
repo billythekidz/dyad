@@ -30,6 +30,7 @@ import { codeSearchTool } from "./tools/code_search";
 import { planningQuestionnaireTool } from "./tools/planning_questionnaire";
 import { writePlanTool } from "./tools/write_plan";
 import { exitPlanTool } from "./tools/exit_plan";
+import { bash } from "./tools/bash";
 import type { LanguageModelV3ToolResultOutput } from "@ai-sdk/provider";
 import {
   escapeXmlAttr,
@@ -64,6 +65,7 @@ export const TOOL_DEFINITIONS: readonly ToolDefinition[] = [
   webCrawlTool,
   updateTodosTool,
   runTypeChecksTool,
+  bash, // ← BASH TOOL ADDED!
   // Plan mode tools
   planningQuestionnaireTool,
   writePlanTool,
