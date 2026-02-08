@@ -92,6 +92,47 @@ export async function onReady() {
   // Cleanup old ai_messages_json entries to prevent database bloat
   cleanupOldAiMessagesJson();
 
+  // Setup Neural Memory (auto-install and init if needed)
+  const { exec } = require("child_process");
+  exec("nmem --help", (error: any) => {
+    if (error) {
+      // nmem not found - install it
+      logger.info("[NeuralMemory] Not found - installing...");
+      exec("pip install neural-memory", { timeout: 120000 }, (installError: any, stdout: string, stderr: string) => {
+        if (installError) {
+          logger.warn("[NeuralMemory] Installation failed (non-critical):", installError.message);
+          return;
+        }
+        logger.info("[NeuralMemory] ✓ Installed successfully");
+
+        // Initialize after install
+        exec("nmem init --no-mcp", { timeout: 30000 }, (initError: any) => {
+          if (initError) {
+            logger.warn("[NeuralMemory] Initialization skipped:", initError.message);
+          } else {
+            logger.info("[NeuralMemory] ✓ Initialized - neural_memory tool ready!");
+          }
+        });
+      });
+    } else {
+      // nmem found - check if initialized
+      exec("nmem status", { timeout: 5000 }, (statusError: any, stdout: string) => {
+        if (!statusError && stdout.includes("Brain:")) {
+          logger.info("[NeuralMemory] ✓ Already set up and ready");
+        } else {
+          // Initialize
+          exec("nmem init --no-mcp", { timeout: 30000 }, (initError: any) => {
+            if (initError) {
+              logger.warn("[NeuralMemory] Initialization skipped:", initError.message);
+            } else {
+              logger.info("[NeuralMemory] ✓ Initialized - neural_memory tool ready!");
+            }
+          });
+        }
+      });
+    }
+  });
+
   const settings = readSettings();
 
   // Add dyad-apps directory to git safe.directory (required for Windows).

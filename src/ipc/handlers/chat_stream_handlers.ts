@@ -2220,6 +2220,79 @@ Important:
     },
   };
 
+  // Neural Memory Tool
+  mcpToolSet["neural_memory"] = {
+    description: `AI Memory System using NeuralMemory CLI. Store and recall memories through neural activation patterns.
+
+Commands:
+- remember/a: Store memory (fact, decision, insight, todo)
+- recall/q: Query memories with spreading activation
+- todo: Add TODO with priority
+- context: Get recent context for AI injection
+- last N: Show last N memories
+- today: Show today's memories
+- list: List all memories with filters
+- stats: Brain statistics
+- dashboard: Rich terminal dashboard
+- index: Index codebase into memory
+- brain: Manage multiple brains
+- project: Project-scoped memories
+
+Examples:
+- nmem remember "Fixed auth bug in login.py:42"
+- nmem remember "Use PostgreSQL for database" --type decision
+- nmem todo "Review PR #123" --priority 7
+- nmem recall "auth bug"
+- nmem last 5
+- nmem today
+- nmem context --limit 10 --json
+- nmem index src/
+- nmem brain list
+- nmem stats
+
+Returns: Command output (memories, stats, etc.)`,
+    inputSchema: z.object({
+      command: z.string().describe('nmem command to execute (e.g., "remember \\"my memory\\"", "recall \\"query\\"", "last 5")'),
+      description: z.string().optional().describe('Brief description of what this memory operation does'),
+    }),
+    execute: async (args: any) => {
+      const { command, description } = args;
+
+      try {
+        logger.log(`[neural_memory] Executing: nmem ${command}`);
+        if (description) {
+          logger.log(`[neural_memory] Description: ${description}`);
+        }
+
+        const { exec } = await import('child_process');
+        const { promisify } = await import('util');
+        const execAsync = promisify(exec);
+
+        // Execute nmem command with 30-second timeout
+        const { stdout, stderr } = await execAsync(`nmem ${command}`, {
+          timeout: 30000,
+          maxBuffer: 5 * 1024 * 1024, // 5MB buffer
+        });
+
+        const output = [stdout, stderr].filter(Boolean).join('\n\n');
+        logger.log(`[neural_memory] Success! Output:\n${output.slice(0, 300)}...`);
+
+        return output || 'Neural memory operation completed successfully';
+      } catch (error: any) {
+        const errorMessage = error.message || String(error);
+        const stderr = error.stderr || '';
+        const stdout = error.stdout || '';
+
+        logger.error(`[neural_memory] Error:`, errorMessage);
+
+        // Combine stdout/stderr for better error context
+        const fullOutput = [stdout, stderr, errorMessage].filter(Boolean).join('\n\n');
+
+        throw new Error(`Neural memory operation failed: ${fullOutput}`);
+      }
+    },
+  };
+
   // ============================================================================
   // MCP TOOLS (Original functionality)
   // ============================================================================

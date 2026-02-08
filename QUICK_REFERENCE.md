@@ -1,6 +1,6 @@
 # 🚀 DYAD BUILD MODE - QUICK REFERENCE
 
-## 📋 All 7 Free Tools:
+## 📋 All 8 Free Tools:
 
 ### 1. **bash** - Shell Commands
 ```
@@ -33,18 +33,26 @@
 "Check for TypeScript errors"
 ```
 
-### 6. **web_search** - Web Search (NEW!)
+### 6. **web_search** - Web Search
 ```
 "Search the web for Next.js documentation"
 "Find React best practices 2026"
 "Search for Tailwind CSS v4 tutorial"
 ```
 
-### 7. **sqlite_query** - Database (NEW!)
+### 7. **sqlite_query** - Database
 ```
 "Create a database at ./data.db with users table"
 "Add a user named John to data.db"
 "Show all users from data.db"
+```
+
+### 8. **neural_memory** - AI Memory 🧠 (NEW!)
+```
+"Remember: Fixed auth bug in login.py:42"
+"What do we know about auth bugs?"
+"Show last 5 memories"
+"Index the src/ directory into memory"
 ```
 
 ---
@@ -97,10 +105,11 @@ npm install better-sqlite3
 
 ## ✅ Version Info:
 
-- **Version:** custom-bash-v1.3
+- **Version:** custom-bash-v1.5
 - **Date:** 2026-02-08
 - **Branch:** custom-bash-tool
-- **Tools:** 7 (all FREE!)
+- **Tools:** 8 (all FREE!)
+- **NEW:** Neural Memory - AI Brain 🧠
 
 ---
 
@@ -109,4 +118,6 @@ npm install better-sqlite3
 D:\GITHUB\dyad\out\dyad-win32-x64\dyad.exe
 ```
 
-**Select "Build" mode and start using all 7 tools!** 🎉
+**Select "Build" mode and start using all 8 tools!** 🎉
+
+**Bonus:** Neural memory auto-installs on first launch! 🧠
