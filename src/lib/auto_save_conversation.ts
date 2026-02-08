@@ -77,12 +77,25 @@ export async function saveConversationToMemory(
     // 1. Save project context
     const contextCommand = `remember "Project: ${projectScope} - Conversation archived with ${summary.messageCount} messages. Key work: ${summary.features.length} features, ${summary.errors.length} fixes, ${summary.keyDecisions.length} decisions." --type project --priority 9`;
 
-    await execAsync(`nmem ${contextCommand}`, {
-      timeout: 30000,
-      maxBuffer: 5 * 1024 * 1024,
-    });
+    logger.info(`[AutoSave] Running: nmem ${contextCommand}`);
 
-    logger.info('[AutoSave] Project context saved');
+    try {
+      const { stdout, stderr } = await execAsync(`nmem ${contextCommand}`, {
+        timeout: 30000,
+        maxBuffer: 5 * 1024 * 1024,
+      });
+      logger.info('[AutoSave] Project context saved');
+      if (stderr) logger.warn('[AutoSave] stderr:', stderr);
+    } catch (err: any) {
+      logger.error('[AutoSave] Failed to save project context:', err);
+      logger.error('[AutoSave] Error details:', {
+        message: err.message,
+        code: err.code,
+        stderr: err.stderr,
+        stdout: err.stdout,
+      });
+      throw err; // Re-throw to trigger catch block
+    }
 
     // 2. Save key decisions
     for (const decision of summary.keyDecisions.slice(0, 10)) {
