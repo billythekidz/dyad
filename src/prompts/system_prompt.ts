@@ -4,8 +4,14 @@ import log from "electron-log";
 import { TURBO_EDITS_V2_SYSTEM_PROMPT } from "../pro/main/prompts/turbo_edits_v2_prompt";
 import { constructLocalAgentPrompt } from "./local_agent_prompt";
 import { constructPlanModePrompt } from "./plan_mode_prompt";
+import { BUILD_SYSTEM_PREFIX_COMPACT } from "./system_prompt_compact";
 
 const logger = log.scope("system_prompt");
+
+// Toggle between FULL and COMPACT system prompt to manage token usage
+// COMPACT reduces tokens by ~88% (from ~5000 to ~600 tokens)
+// Set USE_COMPACT_PROMPT=true in .env to enable
+const USE_COMPACT = process.env.USE_COMPACT_PROMPT === 'true';
 
 export const THINKING_PROMPT = `
 # Thinking Process
@@ -508,7 +514,13 @@ export const BUILD_SYSTEM_POSTFIX = `Directory names MUST be all lower-case (src
 > Do NOT use <dyad-file> tags in the output. ALWAYS use <dyad-write> to generate code.
 `;
 
-export const BUILD_SYSTEM_PROMPT = `${BUILD_SYSTEM_PREFIX}
+export const BUILD_SYSTEM_PROMPT = USE_COMPACT
+  ? `${BUILD_SYSTEM_PREFIX_COMPACT}
+
+[[AI_RULES]]
+
+${BUILD_SYSTEM_POSTFIX}`
+  : `${BUILD_SYSTEM_PREFIX}
 
 [[AI_RULES]]
 

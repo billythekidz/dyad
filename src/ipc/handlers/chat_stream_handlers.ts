@@ -1251,8 +1251,10 @@ This conversation includes one or more image attachments. When the user uploads 
 
         // Force memory loading at session start
         // If this is the first or second user message, inject memory reminder
+        // Disable auto-enforcement if using COMPACT prompt (already concise)
+        const USE_COMPACT = process.env.USE_COMPACT_PROMPT === 'true';
         const userMessageCount = chatMessages.filter(m => m.role === "user").length;
-        const shouldForceMemory = userMessageCount <= 2;
+        const shouldForceMemory = !USE_COMPACT && userMessageCount <= 2;
 
         // Prepend memory enforcement to system prompt for early messages
         let memoryEnforcementPrefix = "";
