@@ -2473,13 +2473,20 @@ createTypedHandler(
       // Get app path for project scope
       const chat = await db.query.chats.findFirst({
         where: eq(chats.id, chatId),
+        with: {
+          app: true, // Include app to get app.path
+        },
       });
 
       if (!chat) {
         throw new Error(`Chat ${chatId} not found`);
       }
 
-      const dyadAppPath = await getDyadAppPath(chat.appId);
+      if (!chat.app) {
+        throw new Error(`App not found for chat ${chatId}`);
+      }
+
+      const dyadAppPath = getDyadAppPath(chat.app.path);
       const projectScope = await extractProjectScope(dyadAppPath);
 
       // Convert to ModelMessage format
