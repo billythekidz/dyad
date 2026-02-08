@@ -1246,10 +1246,14 @@ This conversation includes one or more image attachments. When the user uploads 
         }
 
         // When calling streamText, the messages need to be properly formatted for mixed content
+        // Get MCP tools for Build mode (includes neural_memory, bash, etc.)
+        const buildModeTools = await getMcpTools(event);
+
         const { fullStream } = await simpleStreamText({
           chatMessages,
           modelClient,
           files: files,
+          tools: buildModeTools,  // Add tools for Build mode!
         });
 
         // Process the stream as before
