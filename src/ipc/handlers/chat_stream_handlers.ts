@@ -2087,6 +2087,139 @@ Important:
     },
   };
 
+  // Web Search (Brave Search API)
+  mcpToolSet["web_search"] = {
+    description: `Search the web using Brave Search API. Returns search results with titles, URLs, and descriptions.
+
+Usage:
+- General searches: "latest Next.js documentation"
+- Specific queries: "React hooks best practices 2026"
+- News/current events: "web development trends 2026"
+- Technical questions: "how to fix CORS error in Express"
+
+Returns:
+- Top search results with title, URL, description
+- Up to 10 results per query
+- Real-time web data`,
+    inputSchema: z.object({
+      query: z.string().describe('The search query (e.g., "Next.js App Router tutorial")'),
+      count: z.number().optional().describe('Number of results (default: 10, max: 20)'),
+    }),
+    execute: async (args: any) => {
+      const { query, count = 10 } = args;
+      const BRAVE_API_KEY = 'BSAk6ycQkrPTCb9RkvDP-9fEQVwADNt';
+
+      try {
+        logger.log(`[web_search] Searching: "${query}"`);
+
+        const url = new URL('https://api.search.brave.com/res/v1/web/search');
+        url.searchParams.set('q', query);
+        url.searchParams.set('count', Math.min(count, 20).toString());
+
+        const response = await fetch(url.toString(), {
+          headers: {
+            'Accept': 'application/json',
+            'Accept-Encoding': 'gzip',
+            'X-Subscription-Token': BRAVE_API_KEY,
+          },
+        });
+
+        if (!response.ok) {
+          throw new Error(`Brave Search API error: ${response.status} ${response.statusText}`);
+        }
+
+        const data = await response.json();
+        const results = data.web?.results || [];
+
+        if (results.length === 0) {
+          return `No results found for: ${query}`;
+        }
+
+        // Format results
+        const formatted = results.map((result: any, index: number) => {
+          return `${index + 1}. ${result.title}\n   URL: ${result.url}\n   ${result.description || 'No description'}\n`;
+        }).join('\n');
+
+        logger.log(`[web_search] Found ${results.length} results for "${query}"`);
+        return `Search results for "${query}":\n\n${formatted}`;
+      } catch (error: any) {
+        logger.error(`[web_search] Error:`, error.message);
+        throw new Error(`Web search failed: ${error.message}`);
+      }
+    },
+  };
+
+  // SQLite Database Tool
+  mcpToolSet["sqlite_query"] = {
+    description: `Execute SQL queries on SQLite database files. Supports SELECT, INSERT, UPDATE, DELETE operations.
+
+Usage:
+- Read data: sqlite_query({ database: "./data.db", query: "SELECT * FROM users" })
+- Create tables: "CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT)"
+- Insert data: "INSERT INTO users (name) VALUES ('John')"
+- Update data: "UPDATE users SET name = 'Jane' WHERE id = 1"
+- Delete data: "DELETE FROM users WHERE id = 1"
+
+Important:
+- Database file path is relative to project root
+- Returns query results as JSON
+- Use prepared statements for safety
+- Creates database file if it doesn't exist`,
+    inputSchema: z.object({
+      database: z.string().describe('Path to SQLite database file (e.g., "./data.db", "./db/app.sqlite")'),
+      query: z.string().describe('SQL query to execute'),
+      params: z.array(z.any()).optional().describe('Query parameters for prepared statements (e.g., [1, "John"])'),
+    }),
+    execute: async (args: any) => {
+      const { database, query, params = [] } = args;
+
+      try {
+        logger.log(`[sqlite_query] Database: ${database}, Query: ${query}`);
+
+        // Dynamic import of better-sqlite3
+        let Database: any;
+        try {
+          const sqlite3 = await import('better-sqlite3');
+          Database = sqlite3.default;
+        } catch (importError) {
+          throw new Error('better-sqlite3 not installed. Run: npm install better-sqlite3');
+        }
+
+        const path = await import('path');
+        const dbPath = path.resolve(database);
+
+        const db = new Database(dbPath);
+        db.pragma('journal_mode = WAL'); // Better performance
+
+        // Determine query type
+        const queryType = query.trim().toUpperCase().split(/\s+/)[0];
+
+        let result: any;
+        if (queryType === 'SELECT') {
+          // SELECT queries return multiple rows
+          const stmt = db.prepare(query);
+          result = stmt.all(...params);
+        } else {
+          // INSERT/UPDATE/DELETE return info
+          const stmt = db.prepare(query);
+          const info = stmt.run(...params);
+          result = {
+            changes: info.changes,
+            lastInsertRowid: info.lastInsertRowid,
+          };
+        }
+
+        db.close();
+
+        logger.log(`[sqlite_query] Success! Results: ${JSON.stringify(result).slice(0, 200)}`);
+        return JSON.stringify(result, null, 2);
+      } catch (error: any) {
+        logger.error(`[sqlite_query] Error:`, error.message);
+        throw new Error(`SQLite query failed: ${error.message}`);
+      }
+    },
+  };
+
   // ============================================================================
   // MCP TOOLS (Original functionality)
   // ============================================================================
