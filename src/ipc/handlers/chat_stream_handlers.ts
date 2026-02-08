@@ -459,6 +459,48 @@ ${componentSnippet}
         }
       }
 
+      // 🧠 AUTO-INJECT NEURAL MEMORY CONTEXT FOR NEW CHATS
+      // If this is the first user message, auto-load context from neural memory
+      const isFirstMessage = chat.messages.length === 0;
+
+      if (isFirstMessage) {
+        try {
+          logger.info(`[AutoLoad] First message detected - loading neural memory context`);
+
+          const dyadAppPath = getDyadAppPath(chat.app.path);
+          const projectScope = await extractProjectScope(dyadAppPath);
+          const contextMessage = await loadProjectContext(projectScope);
+
+          // Insert context as first assistant message
+          await db.insert(messages).values({
+            chatId: req.chatId,
+            role: "assistant",
+            content: contextMessage,
+          });
+
+          logger.info(`[AutoLoad] ✅ Context injected for project: ${projectScope}`);
+
+          // Refresh chat to include the new context message
+          const refreshedChat = await db.query.chats.findFirst({
+            where: eq(chats.id, req.chatId),
+            with: {
+              messages: {
+                orderBy: (messages, { asc }) => [asc(messages.createdAt)],
+              },
+              app: true,
+            },
+          });
+
+          // Update chat reference
+          if (refreshedChat) {
+            chat.messages = refreshedChat.messages;
+          }
+        } catch (error) {
+          logger.warn('[AutoLoad] Failed to load context (non-critical):', error);
+          // Continue without context - not critical
+        }
+      }
+
       const [insertedUserMessage] = await db
         .insert(messages)
         .values({
