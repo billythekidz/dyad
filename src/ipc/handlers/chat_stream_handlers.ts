@@ -2446,9 +2446,9 @@ Returns: Command output (memories, stats, etc.)`,
  * Manual save conversation to neural memory
  * User can trigger this from UI button at any time
  */
-export const saveConversationToMemoryHandler = createTypedHandler(
+createTypedHandler(
   chatContracts.saveConversationToMemory,
-  async ({ chatId }) => {
+  async (event, { chatId }) => {
     try {
       logger.info(`[ManualSave] User triggered save for chat ${chatId}`);
 
@@ -2516,6 +2516,3 @@ export const saveConversationToMemoryHandler = createTypedHandler(
     }
   }
 );
-
-// Register handler
-ipcMain.handle('chat:save-to-memory', saveConversationToMemoryHandler);
