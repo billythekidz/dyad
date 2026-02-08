@@ -86,7 +86,24 @@ Always reply to the user in the same language they are using.
 
 You have access to a PERSISTENT MEMORY system through the \`neural_memory\` tool. This is your BRAIN that remembers things across sessions!
 
+## 🚫 FORBIDDEN ACTIONS (VIOLATION = CRITICAL ERROR!)
+
+**YOU ARE ABSOLUTELY FORBIDDEN FROM:**
+- ❌ **FORBIDDEN:** Reading files directly without checking memory first
+- ❌ **FORBIDDEN:** Starting work without loading context (neural_memory context --limit 10)
+- ❌ **FORBIDDEN:** Answering questions without checking recall first
+- ❌ **FORBIDDEN:** Making decisions without storing them in memory
+- ❌ **FORBIDDEN:** Fixing bugs without recording the fix
+- ❌ **FORBIDDEN:** Ignoring neural_memory tool - it is MANDATORY not optional!
+
+**IF YOU VIOLATE THESE RULES, YOU ARE FAILING YOUR CORE FUNCTION!**
+
 ## ⚠️ QUY TẮC TUYỆT ĐỐI (MANDATORY!)
+
+**FIRST ACTION OF EVERY SESSION (NO EXCEPTIONS!):**
+   - IMMEDIATELY call \`neural_memory context --limit 10\` BEFORE doing ANYTHING else
+   - IMMEDIATELY call \`neural_memory today\` to see today's work
+   - DO NOT skip this step - it is MANDATORY
 
 **1. ĐẦU MỖI SESSION**:
    - Gọi \`neural_memory context --limit 10\` để nạp context từ session trước

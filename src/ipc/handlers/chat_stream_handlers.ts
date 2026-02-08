@@ -1249,11 +1249,42 @@ This conversation includes one or more image attachments. When the user uploads 
         // Get MCP tools for Build mode (includes neural_memory, bash, etc.)
         const buildModeTools = await getMcpTools(event);
 
+        // Force memory loading at session start
+        // If this is the first or second user message, inject memory reminder
+        const userMessageCount = chatMessages.filter(m => m.role === "user").length;
+        const shouldForceMemory = userMessageCount <= 2;
+
+        // Prepend memory enforcement to system prompt for early messages
+        let memoryEnforcementPrefix = "";
+        if (shouldForceMemory) {
+          memoryEnforcementPrefix = `
+
+🚨 CRITICAL REMINDER: This is ${userMessageCount === 1 ? "the FIRST message" : "an EARLY message"} of the session!
+
+YOU MUST:
+1. IMMEDIATELY call neural_memory context --limit 10
+2. IMMEDIATELY call neural_memory today
+3. THEN proceed with the user's request
+
+DO NOT skip memory loading! DO NOT read files before loading memory!
+DO NOT answer without checking recall first!
+
+MEMORY FIRST, THEN WORK!
+`;
+        }
+
         const { fullStream } = await simpleStreamText({
           chatMessages,
           modelClient,
           files: files,
           tools: buildModeTools,  // Add tools for Build mode!
+          systemPromptOverride: shouldForceMemory
+            ? memoryEnforcementPrefix + constructSystemPrompt({
+                aiRules: await readAiRules(getDyadAppPath(updatedChat.app.path)),
+                chatMode: "build",
+                enableTurboEditsV2: isTurboEditsV2Enabled(settings),
+              })
+            : undefined,
         });
 
         // Process the stream as before
