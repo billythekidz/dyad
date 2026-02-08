@@ -98,6 +98,7 @@ import {
 } from "./free_agent_quota_handlers";
 import { AI_STREAMING_ERROR_MESSAGE_PREFIX } from "@/shared/texts";
 import { getCurrentCommitHash } from "../utils/git_utils";
+import { getBuildModeTools } from "./build_mode_tools";
 import {
   processChatMessagesWithVersionedFiles as getVersionedFiles,
   VersionedFiles,
@@ -1898,7 +1899,124 @@ ${otherAppsCodebaseInfo}
 async function getMcpTools(event: IpcMainInvokeEvent): Promise<ToolSet> {
   const mcpToolSet: ToolSet = {};
 
-  // Add bash tool for Build mode
+  // ============================================================================
+  // BUILD MODE TOOLS (Ported from Agent Mode - No Pro required!)
+  // ============================================================================
+
+  // File Operations
+  mcpToolSet["read_file"] = {
+    description: "Read the contents of a file from the codebase. Returns the file content as a string.",
+    inputSchema: z.object({
+      file_path: z.string().describe("The path to the file relative to project root"),
+    }),
+    execute: async (args: any) => {
+      const { file_path } = args;
+      const { readFile } = await import('fs/promises');
+      const path = await import('path');
+
+      try {
+        const content = await readFile(file_path, 'utf-8');
+        logger.log(`[read_file] Read ${file_path}: ${content.length} bytes`);
+        return content;
+      } catch (error: any) {
+        throw new Error(`Failed to read file ${file_path}: ${error.message}`);
+      }
+    },
+  };
+
+  mcpToolSet["list_files"] = {
+    description: "List files in a directory. Returns a list of file paths.",
+    inputSchema: z.object({
+      directory: z.string().optional().describe("Directory path (defaults to root)"),
+      recursive: z.boolean().optional().describe("Recursive listing (default: false)"),
+    }),
+    execute: async (args: any) => {
+      const { directory = ".", recursive = false } = args;
+      const { readdir } = await import('fs/promises');
+      const path = await import('path');
+
+      const listFiles = async (dir: string, basePath: string = ""): Promise<string[]> => {
+        const entries = await readdir(dir, { withFileTypes: true });
+        const files: string[] = [];
+
+        for (const entry of entries) {
+          const relativePath = path.join(basePath, entry.name);
+
+          // Skip node_modules and .git
+          if (entry.name === "node_modules" || entry.name === ".git") continue;
+
+          if (entry.isDirectory()) {
+            if (recursive) {
+              files.push(...(await listFiles(path.join(dir, entry.name), relativePath)));
+            }
+          } else {
+            files.push(relativePath);
+          }
+        }
+
+        return files;
+      };
+
+      try {
+        const files = await listFiles(directory);
+        logger.log(`[list_files] Listed ${files.length} files in ${directory}`);
+        return files.join("\n") || "No files found";
+      } catch (error: any) {
+        throw new Error(`Failed to list files: ${error.message}`);
+      }
+    },
+  };
+
+  mcpToolSet["grep"] = {
+    description: "Search for a pattern in files. Returns matching lines with file paths.",
+    inputSchema: z.object({
+      pattern: z.string().describe("The search pattern (supports regex)"),
+      directory: z.string().optional().describe("Directory to search (defaults to root)"),
+      file_pattern: z.string().optional().describe('File pattern (e.g., "*.ts", "*.js")'),
+    }),
+    execute: async (args: any) => {
+      const { pattern, directory = ".", file_pattern = "*" } = args;
+      const { exec } = await import('child_process');
+      const { promisify } = await import('util');
+      const execAsync = promisify(exec);
+
+      try {
+        const command = `grep -rn "${pattern}" ${directory} --include="${file_pattern}" 2>/dev/null || echo "No matches"`;
+        const { stdout } = await execAsync(command, { timeout: 30000 });
+
+        logger.log(`[grep] Search "${pattern}": ${stdout.split('\n').length} matches`);
+        return stdout || "No matches found";
+      } catch (error: any) {
+        throw new Error(`Grep failed: ${error.message}`);
+      }
+    },
+  };
+
+  mcpToolSet["run_type_checks"] = {
+    description: "Run TypeScript type checking. Returns type errors if any.",
+    inputSchema: z.object({
+      fix: z.boolean().optional().describe("Whether to attempt auto-fixing (default: false)"),
+    }),
+    execute: async (args: any) => {
+      const { fix = false } = args;
+      const { exec } = await import('child_process');
+      const { promisify } = await import('util');
+      const execAsync = promisify(exec);
+
+      try {
+        const command = `npx tsc --noEmit${fix ? ' --pretty' : ''}`;
+        const { stdout, stderr } = await execAsync(command, { timeout: 60000 });
+
+        const output = [stdout, stderr].filter(Boolean).join('\n');
+        logger.log(`[run_type_checks] TypeScript: ${output ? 'errors found' : 'no errors'}`);
+        return output || "No type errors found ✓";
+      } catch (error: any) {
+        return error.stdout || error.message;
+      }
+    },
+  };
+
+  // Bash tool (already added but keeping here for organization)
   mcpToolSet["bash"] = {
     description: `Execute bash/shell commands in the project directory.
 
@@ -1968,6 +2086,10 @@ Important:
       }
     },
   };
+
+  // ============================================================================
+  // MCP TOOLS (Original functionality)
+  // ============================================================================
 
   try {
     const servers = await db
