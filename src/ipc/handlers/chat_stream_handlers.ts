@@ -115,6 +115,14 @@ import {
 } from "../utils/versioned_codebase_context";
 import { getAiMessagesJsonIfWithinLimit } from "../utils/ai_messages_utils";
 
+// Neural Memory-First Architecture imports
+import { getActiveWindow, estimateActiveWindowTokens, mergeContexts } from "../../lib/context_assembly";
+import { updateTiersForNewMessage } from "../../lib/memory_tier_manager";
+import { autoAdjustWindowSize } from "../../lib/dynamic_window_sizing";
+import { detectContextNeed } from "../../lib/context_detector";
+import { recallContext } from "../../lib/semantic_recall";
+import { triggerSummarization } from "../../services/summarization_service";
+
 type AsyncIterableStream<T> = AsyncIterable<T> & ReadableStream<T>;
 
 const logger = log.scope("chat_stream_handlers");
@@ -661,13 +669,126 @@ ${componentSnippet}
           codebaseInfo.length / 4,
         );
 
+        // === NEURAL MEMORY-FIRST ARCHITECTURE ===
+        // Check if neural memory is enabled
+        const useNeuralMemory = settings.features?.neuralMemory?.enabled ?? false;
+
         // Prepare message history for the AI
-        const messageHistory = updatedChat.messages.map((message) => ({
-          role: message.role as "user" | "assistant" | "system",
-          content: message.content,
-          sourceCommitHash: message.sourceCommitHash,
-          commitHash: message.commitHash,
-        }));
+        let messageHistory: Array<{
+          role: "user" | "assistant" | "system";
+          content: string;
+          sourceCommitHash?: string | null;
+          commitHash?: string | null;
+        }>;
+
+        let estimatedContextTokens = 0;
+
+        if (useNeuralMemory) {
+          // Neural Memory Mode: Use active window with semantic retrieval
+          logger.info(
+            `[Neural Memory] Using active window for chat ${req.chatId}`
+          );
+
+          // Get active window messages (only those in active tier)
+          let activeMessages = await getActiveWindow(req.chatId);
+
+          // === PHASE 3: SEMANTIC RETRIEVAL ===
+          // Detect if user message needs context from earlier in conversation
+          const { needsContext, keywords, confidence, triggeredPatterns } =
+            detectContextNeed(req.message);
+
+          if (needsContext && keywords.length > 0) {
+            logger.info(
+              `[Semantic Recall] Context needed for chat ${req.chatId}`,
+              {
+                confidence,
+                keywords,
+                patterns: triggeredPatterns,
+              }
+            );
+
+            // Recall relevant context from nmem
+            const recalledMessages = await recallContext(
+              req.chatId,
+              keywords,
+              5 // max 5 recalled messages
+            );
+
+            if (recalledMessages.length > 0) {
+              logger.info(
+                `[Semantic Recall] Retrieved ${recalledMessages.length} messages for keywords: ${keywords.join(', ')}`
+              );
+
+              // Merge recalled context with active window
+              activeMessages = mergeContexts(activeMessages, recalledMessages);
+
+              // Send telemetry for semantic recall
+              sendTelemetryEvent("semantic_recall_triggered", {
+                chatId: req.chatId,
+                keywords,
+                confidence,
+                recalledCount: recalledMessages.length,
+                patterns: triggeredPatterns,
+              });
+            } else {
+              logger.info(
+                `[Semantic Recall] No relevant context found for keywords: ${keywords.join(', ')}`
+              );
+            }
+          }
+
+          // Convert ModelMessage[] to the expected format
+          messageHistory = activeMessages.map((msg) => ({
+            role: msg.role as "user" | "assistant" | "system",
+            content: typeof msg.content === "string" ? msg.content : "",
+            sourceCommitHash: null,
+            commitHash: null,
+          }));
+
+          // Log token savings
+          estimatedContextTokens = await estimateActiveWindowTokens(req.chatId);
+          logger.info(
+            `[Neural Memory] Context assembled: ${messageHistory.length} messages, ~${estimatedContextTokens} tokens`
+          );
+
+          // Send telemetry event
+          sendTelemetryEvent("context_assembled", {
+            chatId: req.chatId,
+            totalMessages: messageHistory.length,
+            estimatedTokens: estimatedContextTokens,
+            memoryMode: "neural",
+          });
+
+          // Update memory tiers for the newly added message
+          await updateTiersForNewMessage(req.chatId, userMessageId);
+
+          // Auto-adjust window size if needed
+          await autoAdjustWindowSize(req.chatId);
+        } else {
+          // Legacy Mode: Load all messages (backward compatibility)
+          logger.info(`[Legacy] Loading all messages for chat ${req.chatId}`);
+
+          messageHistory = updatedChat.messages.map((message) => ({
+            role: message.role as "user" | "assistant" | "system",
+            content: message.content,
+            sourceCommitHash: message.sourceCommitHash,
+            commitHash: message.commitHash,
+          }));
+
+          // Estimate tokens for legacy mode
+          estimatedContextTokens = messageHistory.reduce(
+            (sum, msg) => sum + Math.ceil(msg.content.length / 4),
+            0
+          );
+
+          // Send telemetry event
+          sendTelemetryEvent("context_assembled", {
+            chatId: req.chatId,
+            totalMessages: messageHistory.length,
+            estimatedTokens: estimatedContextTokens,
+            memoryMode: "legacy",
+          });
+        }
 
         // The DB stores the short /implement-plan= display form; inject the
         // expanded plan content into the AI message history so the model
@@ -1318,7 +1439,8 @@ This conversation includes one or more image attachments. When the user uploads 
             `[AutoSave] ⚠️ Conversation at ${percentage}% of token limit (${autoSaveCheck.currentTokens}/${TOKEN_LIMITS.MAX_TOKENS})`
           );
 
-          // Get project scope
+          // Get project path and scope
+          const dyadAppPath = getDyadAppPath(updatedChat.app.path);
           const projectScope = await extractProjectScope(dyadAppPath);
 
           // Notify user
@@ -1725,6 +1847,22 @@ ${problemReport.problems
           .update(messages)
           .set({ content: fullResponse })
           .where(eq(messages.id, placeholderAssistantMessage.id));
+
+        // === NEURAL MEMORY: Update tiers for assistant message ===
+        try {
+          await updateTiersForNewMessage(req.chatId, placeholderAssistantMessage.id);
+          logger.info(`[Neural Memory] Updated tiers for assistant message ${placeholderAssistantMessage.id}`);
+
+          // Check if summarization is needed (every 50 messages)
+          // This runs in the background and doesn't block the response
+          triggerSummarization(req.chatId).catch((error) => {
+            logger.error("[Neural Memory] Summarization failed (non-blocking):", error);
+          });
+        } catch (error) {
+          logger.error("[Neural Memory] Failed to update tiers for assistant message:", error);
+          // Non-blocking: continue even if tier update fails
+        }
+
         const settings = readSettings();
         if (
           settings.autoApproveChanges &&

@@ -107,6 +107,29 @@ export const messages = sqliteTable("messages", {
   }),
   // Indicates this message is a compaction summary
   isCompactionSummary: integer("is_compaction_summary", { mode: "boolean" }),
+
+  // === NEURAL MEMORY FIELDS ===
+  // Memory tier: active (sent to Claude), session (queryable), archived (nmem only)
+  memoryTier: text("memory_tier", {
+    enum: ["active", "session", "archived"],
+  })
+    .notNull()
+    .default("active"),
+
+  // Neural memory sync tracking
+  nmemSynced: integer("nmem_synced", { mode: "boolean" })
+    .notNull()
+    .default(sql`0`),
+
+  nmemSyncedAt: integer("nmem_synced_at", { mode: "timestamp" }),
+
+  // Cached token estimation (performance optimization)
+  estimatedTokens: integer("estimated_tokens"),
+
+  // Reference to conversation summary (if this message was summarized)
+  // Note: Reference constraint added in migration, not in schema to avoid circular dependency
+  summaryId: integer("summary_id"),
+
   createdAt: integer("created_at", { mode: "timestamp" })
     .notNull()
     .default(sql`(unixepoch())`),
@@ -134,6 +157,107 @@ export const versions = sqliteTable(
   ],
 );
 
+// --- Neural Memory tables ---
+
+/**
+ * Conversation summaries for memory tier management
+ * Stores compressed summaries of message ranges for efficient context retrieval
+ */
+export const conversationSummaries = sqliteTable("conversation_summaries", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+
+  chatId: integer("chat_id")
+    .notNull()
+    .references(() => chats.id, { onDelete: "cascade" }),
+
+  // Range of messages summarized
+  startMessageId: integer("start_message_id").notNull(),
+  endMessageId: integer("end_message_id").notNull(),
+
+  // Summary content
+  summary: text("summary").notNull(),
+
+  // Token count for summary (cached for performance)
+  estimatedTokens: integer("estimated_tokens").notNull(),
+
+  // Neural memory sync status
+  nmemSynced: integer("nmem_synced", { mode: "boolean" })
+    .notNull()
+    .default(sql`0`),
+
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
+});
+
+/**
+ * Memory configuration per chat
+ * Tracks active window size, token budgets, and summarization state
+ */
+export const chatMemoryConfig = sqliteTable("chat_memory_config", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+
+  chatId: integer("chat_id")
+    .notNull()
+    .unique()
+    .references(() => chats.id, { onDelete: "cascade" }),
+
+  // Active window size (dynamic, adjusted based on token budget)
+  activeWindowSize: integer("active_window_size")
+    .notNull()
+    .default(30),
+
+  // Token budget for active window
+  activeWindowTokenBudget: integer("active_window_token_budget")
+    .notNull()
+    .default(40000),
+
+  // Last message ID that was summarized
+  lastSummarizedMessageId: integer("last_summarized_message_id"),
+
+  // Total messages in conversation (for metrics)
+  totalMessages: integer("total_messages")
+    .notNull()
+    .default(0),
+
+  // Neural memory project scope identifier
+  nmemProjectScope: text("nmem_project_scope"),
+
+  updatedAt: integer("updated_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
+});
+
+/**
+ * Background sync queue for neural memory operations
+ * Ensures nmem operations don't block the UI
+ */
+export const nmemSyncQueue = sqliteTable("nmem_sync_queue", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+
+  chatId: integer("chat_id").notNull(),
+  messageId: integer("message_id").notNull(),
+
+  // Operation type
+  operation: text("operation", {
+    enum: ["save_message", "save_summary"],
+  }).notNull(),
+
+  // JSON payload for the operation
+  payload: text("payload").notNull(),
+
+  // Retry tracking
+  attempts: integer("attempts")
+    .notNull()
+    .default(0),
+
+  lastAttempt: integer("last_attempt"),
+
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
+});
+
 // Define relations
 export const appsRelations = relations(apps, ({ many }) => ({
   chats: many(chats),
@@ -152,6 +276,10 @@ export const messagesRelations = relations(messages, ({ one }) => ({
   chat: one(chats, {
     fields: [messages.chatId],
     references: [chats.id],
+  }),
+  summary: one(conversationSummaries, {
+    fields: [messages.summaryId],
+    references: [conversationSummaries.id],
   }),
 }));
 
@@ -207,6 +335,27 @@ export const languageModelsRelations = relations(
     provider: one(language_model_providers, {
       fields: [language_models.customProviderId],
       references: [language_model_providers.id],
+    }),
+  }),
+);
+
+// Neural Memory table relations
+export const conversationSummariesRelations = relations(
+  conversationSummaries,
+  ({ one }) => ({
+    chat: one(chats, {
+      fields: [conversationSummaries.chatId],
+      references: [chats.id],
+    }),
+  }),
+);
+
+export const chatMemoryConfigRelations = relations(
+  chatMemoryConfig,
+  ({ one }) => ({
+    chat: one(chats, {
+      fields: [chatMemoryConfig.chatId],
+      references: [chats.id],
     }),
   }),
 );

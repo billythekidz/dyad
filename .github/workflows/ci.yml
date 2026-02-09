@@ -199,6 +199,11 @@ jobs:
         # do not run this on windows (it's redundant)
         if: contains(matrix.os.name, 'macos')
         run: npm run test
+      - name: Performance Benchmarks
+        # Only run on macOS to save time/resources, and only if changes warrant it
+        if: contains(matrix.os.name, 'macos')
+        # We run this to ensure benchmarks don't rot, even if we don't strictly gate on perf numbers yet
+        run: npx vitest bench
       - name: Build
         env:
           NODE_OPTIONS: "--max-old-space-size=4096"

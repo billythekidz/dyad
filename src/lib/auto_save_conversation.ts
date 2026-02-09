@@ -75,7 +75,8 @@ export async function saveConversationToMemory(
     const summary = summarizeConversation(messages);
 
     // 1. Save project context
-    const contextCommand = `remember "Project: ${projectScope} - Conversation archived with ${summary.messageCount} messages. Key work: ${summary.features.length} features, ${summary.errors.length} fixes, ${summary.keyDecisions.length} decisions." --type project --priority 9`;
+    // Let neural-memory auto-detect type (simpler, more reliable)
+    const contextCommand = `remember "Project: ${projectScope} - Conversation archived with ${summary.messageCount} messages. Key work: ${summary.features.length} features, ${summary.errors.length} fixes, ${summary.keyDecisions.length} decisions."`;
 
     logger.info(`[AutoSave] Running: nmem ${contextCommand}`);
 
@@ -101,7 +102,8 @@ export async function saveConversationToMemory(
     for (const decision of summary.keyDecisions.slice(0, 10)) {
       // Limit to top 10
       try {
-        const decisionCommand = `remember "${decision.replace(/"/g, '\\"')}" --type decision --priority 8`;
+        // Let nmem auto-detect as decision based on content
+        const decisionCommand = `remember "${decision.replace(/"/g, '\\"')}"`;
         await execAsync(`nmem ${decisionCommand}`, {
           timeout: 10000,
         });
@@ -115,7 +117,8 @@ export async function saveConversationToMemory(
     // 3. Save errors/fixes
     for (const error of summary.errors.slice(0, 10)) {
       try {
-        const errorCommand = `remember "${error.replace(/"/g, '\\"')}" --type error --priority 7`;
+        // Let nmem auto-detect as error based on content
+        const errorCommand = `remember "${error.replace(/"/g, '\\"')}"`;
         await execAsync(`nmem ${errorCommand}`, {
           timeout: 10000,
         });

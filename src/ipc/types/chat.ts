@@ -253,6 +253,21 @@ export const chatContracts = {
       featuresCount: z.number(),
     }),
   }),
+
+  getSummaries: defineContract({
+    channel: "chat:get-summaries",
+    input: z.number(), // chatId
+    output: z.array(
+      z.object({
+        id: z.number(),
+        startMessageId: z.number(),
+        endMessageId: z.number(),
+        summary: z.string(),
+        estimatedTokens: z.number(),
+        createdAt: z.date(),
+      })
+    ),
+  }),
 } as const;
 
 // =============================================================================

@@ -11,6 +11,7 @@ More info at: [https://dyad.sh/](https://dyad.sh/)
 - ⚡️ **Local**: Fast, private and no lock-in.
 - 🛠 **Bring your own keys**: Use your own AI API keys — no vendor lock-in.
 - 🖥️ **Cross-platform**: Easy to run on Mac or Windows.
+- 🧠 **Neural Memory**: Unlimited conversation length with intelligent context retrieval (Phase 1 complete)
 
 ## 📦 Download
 
@@ -27,6 +28,27 @@ Join our growing community of AI app builders on **Reddit**: [r/dyadbuilders](ht
 **Dyad** is open-source (see License info below).
 
 If you're interested in contributing to dyad, please read our [contributing](./CONTRIBUTING.md) doc.
+
+## 🧠 Neural Memory System
+
+Dyad includes a neural memory architecture that eliminates the 200k token conversation limit:
+
+- **Infinite Conversations**: No more forced conversation resets
+- **Intelligent Retrieval**: Semantic search for relevant past context
+- **90% Token Reduction**: Only send relevant context to the AI
+- **Graceful Degradation**: Works seamlessly even without neural memory CLI
+
+**Documentation:**
+- [Neural Memory API Reference](./docs/neural-memory-api.md)
+- [Architecture Overview](./neural-memory-architecture.md)
+- [Implementation Plan](./neural-memory-implementation-plan.md)
+
+**Phase 1 (Complete):**
+- ✅ Database schema and migrations
+- ✅ nmem service layer with retry logic
+- ✅ Background sync queue
+- ✅ Token estimation caching
+- ✅ Comprehensive test suite
 
 ## License
 

@@ -158,7 +158,7 @@ You have access to a PERSISTENT MEMORY system through the \`neural_memory\` tool
   - User asks "what did we do": neural_memory last 5
 
 **Dự Án Mới:**
-  1. neural_memory remember "Project: [name]" --type project
+  1. neural_memory remember "Project: [name]" --type context
   2. neural_memory index src/    (Index codebase)
   3. Store tech stack decisions
 

@@ -1,0 +1,30 @@
+{
+  "triggers": [
+    { "pattern": "remember when", "confidence": 0.9 },
+    { "pattern": "like we did", "confidence": 0.85 },
+    { "pattern": "like you did", "confidence": 0.85 },
+    { "pattern": "like you said", "confidence": 0.85 },
+    { "pattern": "as we discussed", "confidence": 0.85 },
+    { "pattern": "earlier you", "confidence": 0.8 },
+    { "pattern": "earlier we", "confidence": 0.8 },
+    { "pattern": "yesterday", "confidence": 0.7 },
+    { "pattern": "last week", "confidence": 0.7 },
+    { "pattern": "last month", "confidence": 0.7 },
+    { "pattern": "before", "confidence": 0.6 },
+    { "pattern": "previously", "confidence": 0.75 },
+    { "pattern": "continue", "confidence": 0.7 },
+    { "pattern": "resume", "confidence": 0.7 },
+    { "pattern": "the bug", "confidence": 0.65 },
+    { "pattern": "the feature", "confidence": 0.65 },
+    { "pattern": "the issue", "confidence": 0.65 },
+    { "pattern": "that we", "confidence": 0.6 },
+    { "pattern": "what did we", "confidence": 0.9 },
+    { "pattern": "what did you", "confidence": 0.9 },
+    { "pattern": "can you recall", "confidence": 0.95 },
+    { "pattern": "do you remember", "confidence": 0.95 }
+  ],
+  "maxRecalledMessages": 5,
+  "recallDepth": 3,
+  "cacheEnabled": true,
+  "cacheTTL": 300
+}

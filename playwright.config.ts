@@ -1,54 +1,69 @@
-import { PlaywrightTestConfig } from "@playwright/test";
-import os from "os";
+import { defineConfig, devices } from '@playwright/test';
 
-const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
-
-const config: PlaywrightTestConfig = {
-  testDir: "./e2e-tests",
-  workers: 1,
+/**
+ * See https://playwright.dev/docs/test-configuration.
+ */
+export default defineConfig({
+  testDir: './tests/e2e', // Explicitly pointing to e2e directory
+  testMatch: /.*\.spec\.ts/, // Matches any .spec.ts files
+  /* Run tests in files in parallel */
+  fullyParallel: true,
+  /* Fail the build on CI if you accidentally left test.only in the source code. */
+  forbidOnly: !!process.env.CI,
+  /* Retry on CI only */
   retries: process.env.CI ? 2 : 0,
-  timeout: process.env.CI ? 180_000 : 75_000,
-  // Use a custom snapshot path template because Playwright's default
-  // is platform-specific which isn't necessary for Dyad e2e tests
-  // which should be platform agnostic (we don't do screenshots; only textual diffs).
-  snapshotPathTemplate:
-    "{testDir}/{testFileDir}/snapshots/{testFileName}_{arg}{ext}",
-
+  /* Opt out of parallel tests on CI. */
+  workers: process.env.CI ? 1 : undefined,
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
-  // Why not use GitHub reporter? Because we're using matrix and it's discouraged:
-  // https://playwright.dev/docs/test-reporters#github-actions-annotations
-  reporter: process.env.CI
-    ? [
-        [
-          "blob",
-          {
-            // Speculatively fix https://github.com/actions/download-artifact/issues/298#issuecomment-2016075998
-            // by using a timestamp in the filename
-            outputFile: `./blob-report/report-${os.platform()}-${timestamp}.zip`,
-          },
-        ],
-        ["@flakiness/playwright", { endpoint: "https://flakiness.io" }],
-      ]
-    : [["html"], ["line"]],
+  reporter: 'html',
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   use: {
-    /* See https://playwright.dev/docs/trace-viewer */
-    trace: "retain-on-failure",
+    /* Base URL to use in actions like `await page.goto('/')`. */
+    baseURL: 'http://localhost:3000',
 
-    // These options do NOT work for electron playwright.
-    // Instead, you need to do a workaround.
-    // See https://github.com/microsoft/playwright/issues/8208
-    //
-    // screenshot: "on",
-    // video: "retain-on-failure",
+    /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
+    trace: 'on-first-retry',
+
+    /* Record video on failure */
+    video: 'on-first-retry',
+
+    /* Take screenshot on failure */
+    screenshot: 'only-on-failure',
   },
 
-  webServer: [
+  /* Configure projects for major browsers */
+  projects: [
     {
-      command: `cd testing/fake-llm-server && npm run build && npm start`,
-      url: "http://localhost:3500/health",
+      name: 'chromium',
+      use: { ...devices['Desktop Chrome'] },
+    },
+
+    {
+      name: 'firefox',
+      use: { ...devices['Desktop Firefox'] },
+    },
+
+    {
+      name: 'webkit',
+      use: { ...devices['Desktop Safari'] },
+    },
+
+    /* Test against mobile viewports. */
+    {
+      name: 'Mobile Chrome',
+      use: { ...devices['Pixel 5'] },
+    },
+    {
+      name: 'Mobile Safari',
+      use: { ...devices['iPhone 12'] },
     },
   ],
-};
 
-export default config;
+  /* Run your local dev server before starting the tests */
+  webServer: {
+    command: 'npm run dev',
+    url: 'http://localhost:3000',
+    reuseExistingServer: !process.env.CI,
+    timeout: 120 * 1000,
+  },
+});

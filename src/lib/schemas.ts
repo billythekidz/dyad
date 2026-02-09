@@ -328,6 +328,16 @@ export const UserSettingsSchema = z
       .optional(),
     hideLocalAgentNewChatToast: z.boolean().optional(),
     enableContextCompaction: z.boolean().optional(),
+    // Neural Memory-First Architecture feature flags
+    features: z
+      .object({
+        neuralMemory: z
+          .object({
+            enabled: z.boolean().optional(),
+          })
+          .optional(),
+      })
+      .optional(),
   })
   // Allow unknown properties to pass through (e.g. future settings
   // that should be preserved if user downgrades to an older version)

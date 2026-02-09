@@ -26,6 +26,7 @@ import {
   gitRemove,
   gitAddAll,
   getGitUncommittedFiles,
+  getCurrentCommitHash,
 } from "../utils/git_utils";
 import { readSettings } from "@/main/settings";
 import { writeMigrationFile } from "../utils/file_utils";
@@ -548,11 +549,28 @@ export async function processFullResponseActions(
         ? `[dyad] ${chatSummary} - ${changes.join(", ")}`
         : `[dyad] ${changes.join(", ")}`;
       // Use chat summary, if provided, or default for commit message
-      let commitHash = await gitCommit({
-        path: appPath,
-        message,
-      });
-      logger.log(`Successfully committed changes: ${changes.join(", ")}`);
+      let commitHash = "";
+      let commitCreated = false;
+      try {
+        commitHash = await gitCommit({
+          path: appPath,
+          message,
+        });
+        commitCreated = true;
+        logger.log(`Successfully committed changes: ${changes.join(", ")}`);
+      } catch (error: any) {
+        if (
+          error.message.includes("nothing to commit") ||
+          error.message.includes("working tree clean")
+        ) {
+          logger.warn("Nothing to commit, skipping git commit step.");
+          // Get current HEAD hash as fallback
+          commitHash = await getCurrentCommitHash({ path: appPath });
+          commitCreated = false;
+        } else {
+          throw error;
+        }
+      }
 
       // Check for any uncommitted changes after the commit
       uncommittedFiles = await getGitUncommittedFiles({ path: appPath });
@@ -561,13 +579,16 @@ export async function processFullResponseActions(
         // Stage all changes
         await gitAddAll({ path: appPath });
         try {
+          // If we created a commit, amend it. If not, create a new one.
           commitHash = await gitCommit({
             path: appPath,
-            message: message + " + extra files edited outside of Dyad",
-            amend: true,
+            message: commitCreated
+              ? message + " + extra files edited outside of Dyad"
+              : message,
+            amend: commitCreated,
           });
           logger.log(
-            `Amend commit with changes outside of dyad: ${uncommittedFiles.join(", ")}`,
+            `${commitCreated ? "Amend commit" : "Created new commit"} with changes outside of dyad: ${uncommittedFiles.join(", ")}`,
           );
         } catch (error) {
           // Just log, but don't throw an error because the user can still

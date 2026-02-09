@@ -1,5 +1,5 @@
 import { db } from "../../db";
-import { apps, chats, messages } from "../../db/schema";
+import { apps, chats, messages, conversationSummaries } from "../../db/schema";
 import { desc, eq, and, like } from "drizzle-orm";
 import type { ChatSearchResult, ChatSummary } from "../../lib/schemas";
 
@@ -170,6 +170,25 @@ export function registerChatHandlers() {
     );
 
     return uniqueChats;
+  });
+
+  // Get conversation summaries for a chat
+  createTypedHandler(chatContracts.getSummaries, async (_, chatId) => {
+    const summaries = await db
+      .select({
+        id: conversationSummaries.id,
+        startMessageId: conversationSummaries.startMessageId,
+        endMessageId: conversationSummaries.endMessageId,
+        summary: conversationSummaries.summary,
+        estimatedTokens: conversationSummaries.estimatedTokens,
+        createdAt: conversationSummaries.createdAt,
+      })
+      .from(conversationSummaries)
+      .where(eq(conversationSummaries.chatId, chatId))
+      .orderBy(conversationSummaries.createdAt)
+      .limit(20); // Limit to last 20 summaries
+
+    return summaries;
   });
 
   logger.debug("Registered chat IPC handlers");
